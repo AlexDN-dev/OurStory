@@ -23,6 +23,8 @@ export function useDb() {
       emoji TEXT NOT NULL DEFAULT '💖',
       date TEXT NOT NULL,
       lieu TEXT,
+      lat REAL,
+      lng REAL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS photos (
@@ -31,11 +33,23 @@ export function useDb() {
       path TEXT NOT NULL,
       FOREIGN KEY (souvenir_id) REFERENCES souvenirs(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS geocode_cache (
+      query TEXT PRIMARY KEY,
+      lat REAL,
+      lng REAL,
+      fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE INDEX IF NOT EXISTS idx_photos_souvenir ON photos(souvenir_id);
     CREATE INDEX IF NOT EXISTS idx_souvenirs_date ON souvenirs(date);
   `)
   if (!hasColumn(db, 'souvenirs', 'lieu')) {
     db.exec('ALTER TABLE souvenirs ADD COLUMN lieu TEXT')
+  }
+  if (!hasColumn(db, 'souvenirs', 'lat')) {
+    db.exec('ALTER TABLE souvenirs ADD COLUMN lat REAL')
+  }
+  if (!hasColumn(db, 'souvenirs', 'lng')) {
+    db.exec('ALTER TABLE souvenirs ADD COLUMN lng REAL')
   }
   _db = db
   return db
@@ -47,6 +61,8 @@ export type Souvenir = {
   emoji: string
   date: string
   lieu: string | null
+  lat: number | null
+  lng: number | null
   created_at: string
   photos: string[]
 }
@@ -121,4 +137,55 @@ export function getRandomPhoto(): string | null {
   const db = useDb()
   const row = db.prepare('SELECT path FROM photos ORDER BY RANDOM() LIMIT 1').get() as any
   return row?.path ?? null
+}
+
+export function setSouvenirCoords(id: number, lat: number | null, lng: number | null) {
+  const db = useDb()
+  db.prepare('UPDATE souvenirs SET lat = ?, lng = ? WHERE id = ?').run(lat, lng, id)
+}
+
+export type GeoSouvenir = {
+  id: number
+  title: string
+  emoji: string
+  date: string
+  lieu: string
+  lat: number
+  lng: number
+  cover: string | null
+}
+
+export function listGeoSouvenirs(): GeoSouvenir[] {
+  const db = useDb()
+  const rows = db.prepare(`
+    SELECT s.id, s.title, s.emoji, s.date, s.lieu, s.lat, s.lng,
+      (SELECT path FROM photos WHERE souvenir_id = s.id ORDER BY id ASC LIMIT 1) AS cover
+    FROM souvenirs s
+    WHERE s.lat IS NOT NULL AND s.lng IS NOT NULL
+    ORDER BY s.date DESC, s.id DESC
+  `).all() as any[]
+  return rows
+}
+
+export function listSouvenirsNeedingGeocode(): { id: number; lieu: string }[] {
+  const db = useDb()
+  return db.prepare(`
+    SELECT id, lieu FROM souvenirs
+    WHERE lieu IS NOT NULL AND TRIM(lieu) <> '' AND (lat IS NULL OR lng IS NULL)
+  `).all() as any[]
+}
+
+export function getGeocodeCache(query: string): { lat: number; lng: number } | null {
+  const db = useDb()
+  const row = db.prepare('SELECT lat, lng FROM geocode_cache WHERE query = ?').get(query) as any
+  if (!row || row.lat == null || row.lng == null) return null
+  return { lat: row.lat, lng: row.lng }
+}
+
+export function setGeocodeCache(query: string, lat: number | null, lng: number | null) {
+  const db = useDb()
+  db.prepare(`
+    INSERT INTO geocode_cache (query, lat, lng) VALUES (?, ?, ?)
+    ON CONFLICT(query) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, fetched_at = datetime('now')
+  `).run(query, lat, lng)
 }

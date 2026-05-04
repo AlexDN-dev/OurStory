@@ -116,11 +116,14 @@ function fmtDate(iso: string) {
     <header class="flex items-center justify-between mb-2">
       <NuxtLink to="/" class="icon-btn" aria-label="Retour">←</NuxtLink>
       <h1 class="h-serif text-2xl">Nos souvenirs</h1>
-      <NuxtLink
-        to="/souvenirs/new"
-        class="w-10 h-10 rounded-full bg-gradient-primary text-white flex items-center justify-center text-xl font-light shadow-cta active:scale-95"
-        aria-label="Ajouter un souvenir"
-      >+</NuxtLink>
+      <div class="flex items-center gap-2">
+        <NuxtLink to="/carte" class="icon-btn" aria-label="Voir la carte">🌍</NuxtLink>
+        <NuxtLink
+          to="/souvenirs/new"
+          class="w-10 h-10 rounded-full bg-gradient-primary text-white flex items-center justify-center text-xl font-light shadow-cta active:scale-95"
+          aria-label="Ajouter un souvenir"
+        >+</NuxtLink>
+      </div>
     </header>
     <p class="text-center text-sm text-muted mb-5">
       <span v-if="total != null">{{ total }} moment{{ total > 1 ? 's' : '' }} précieux</span>

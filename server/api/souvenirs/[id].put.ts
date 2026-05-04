@@ -1,8 +1,9 @@
 import { writeFile, unlink } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { updateSouvenir, getSouvenir } from '../../utils/db'
+import { updateSouvenir, getSouvenir, setSouvenirCoords } from '../../utils/db'
 import { uploadsDir } from '../../utils/storage'
+import { geocode } from '../../utils/geocode'
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'])
 
@@ -47,12 +48,30 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Au moins une photo' })
   }
 
+  const previous = getSouvenir(id)
   const { souvenir, removedPhotos } = updateSouvenir(id, { title, emoji, date, lieu, keepPhotos, newPhotos })
 
   for (const p of removedPhotos) {
     if (!p.startsWith('/uploads/')) continue
     const file = resolve(uploadsDir, p.replace('/uploads/', ''))
     try { await unlink(file) } catch {}
+  }
+
+  if (souvenir) {
+    if (!lieu) {
+      if (souvenir.lat != null || souvenir.lng != null) {
+        setSouvenirCoords(id, null, null)
+        souvenir.lat = null
+        souvenir.lng = null
+      }
+    } else if (lieu !== previous?.lieu || souvenir.lat == null || souvenir.lng == null) {
+      const point = await geocode(lieu)
+      if (point) {
+        setSouvenirCoords(id, point.lat, point.lng)
+        souvenir.lat = point.lat
+        souvenir.lng = point.lng
+      }
+    }
   }
 
   return souvenir

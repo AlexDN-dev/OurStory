@@ -1,8 +1,9 @@
 import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { createSouvenir } from '../../utils/db'
+import { createSouvenir, setSouvenirCoords } from '../../utils/db'
 import { uploadsDir } from '../../utils/storage'
+import { geocode } from '../../utils/geocode'
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'])
 
@@ -35,5 +36,16 @@ export default defineEventHandler(async (event) => {
   if (!date) throw createError({ statusCode: 400, statusMessage: 'Date requise' })
   if (photoPaths.length === 0) throw createError({ statusCode: 400, statusMessage: 'Au moins une photo' })
 
-  return createSouvenir({ title, emoji, date, lieu, photos: photoPaths })
+  const created = createSouvenir({ title, emoji, date, lieu, photos: photoPaths })
+
+  if (lieu) {
+    const point = await geocode(lieu)
+    if (point) {
+      setSouvenirCoords(created.id, point.lat, point.lng)
+      created.lat = point.lat
+      created.lng = point.lng
+    }
+  }
+
+  return created
 })
