@@ -7,10 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-ENV NODE_ENV=production
-
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY . .
 RUN npm run build
