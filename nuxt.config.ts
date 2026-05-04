@@ -9,7 +9,9 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
-        { name: 'theme-color', content: '#FF6F87' }
+        { name: 'theme-color', content: '#FFE5DC' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' }
       ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
@@ -26,7 +28,7 @@ export default defineNuxtConfig({
       name: 'Notre Histoire',
       short_name: 'Histoire',
       description: 'Notre album de souvenirs',
-      theme_color: '#FF6F87',
+      theme_color: '#FFE5DC',
       background_color: '#FFE5DC',
       display: 'standalone',
       orientation: 'portrait',
